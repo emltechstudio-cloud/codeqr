@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta name="theme-color" content="#050a0f"/>
-<link rel="manifest" href="codeqr-manifest.json"/>
+<link rel="manifest" href="manifest.json"/>
 <title>CodeQR &mdash; Encode Anything</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -120,7 +120,7 @@ footer{border-top:1px solid var(--bd);padding:2.5rem 1.5rem;display:flex;align-i
   <div class="fr2">&copy; 2026 EML Tech Studio &middot; emltechstudio@gmail.com</div>
 </footer>
 <script>
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./codeqr-sw.js').catch(()=>{});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 function sendFB(){var em=document.getElementById('fbemail').value.trim(),ms=document.getElementById('fbmsg').value.trim();if(!em||!ms){alert('Please fill both fields.');return;}window.location.href='mailto:emltechstudio@gmail.com?subject='+encodeURIComponent('CodeQR Feedback')+'&body='+encodeURIComponent('From: '+em+'
 
 '+ms);document.getElementById('fbf').style.display='none';document.getElementById('fthanks').style.display='block';}
