@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="CodeQR"/>
-<link rel="manifest" href="codeqr-manifest.json"/>
+<link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <title>CodeQR</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -644,7 +644,7 @@ video{width:100%;display:block;border-radius:var(--r2)}
 
 <script>
 'use strict';
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./codeqr-sw.js').catch(function(){});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function(){});
 
 /* ── DB ── */
 var DB = null;
