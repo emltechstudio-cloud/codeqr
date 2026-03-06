@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#050a0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="CodeQR"/>
+<link rel="manifest" href="codeqr-manifest.json"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<title>CodeQR</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050a0f;--s1:#0b1923;--s2:#0e2030;--s3:#112438;
+  --bd:#1c3347;--bd2:#2a4d6a;
+  --c:#22d3ee;--c2:#67e8f9;--cd:rgba(34,211,238,.12);
+  --tx:#e8f6fa;--t2:#6fb3cb;--t3:#2c5269;--red:#f87171;
+  --fn:'Syne',sans-serif;--mn:'JetBrains Mono',monospace;
+  --r:16px;--r2:10px;
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
+  --tbh:58px;
+}
+html{font-size:16px;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--tx);font-family:var(--fn);
+  height:100dvh;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;border:none;outline:none}
+
+/* ── SHELL ── */
+#shell{display:flex;flex-direction:column;height:100dvh}
+#panes{flex:1;position:relative;overflow:hidden}
+
+/* ── TAB PAGES ── */
+.pg{position:absolute;inset:0;overflow-y:auto;background:var(--bg);
+  display:flex;flex-direction:column;
+  transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .25s;
+  will-change:transform}
+.pg.here{transform:none;opacity:1;pointer-events:auto}
+.pg.left{transform:translateX(-100%);opacity:0;pointer-events:none}
+.pg.right{transform:translateX(100%);opacity:0;pointer-events:none}
+
+/* ── OVERLAY SCREENS (slide up) ── */
+.ov{position:fixed;inset:0;z-index:80;background:var(--bg);
+  display:flex;flex-direction:column;overflow-y:auto;
+  transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .26s;
+  transform:translateY(100%);opacity:0;pointer-events:none}
+.ov.up{transform:none;opacity:1;pointer-events:auto}
+
+/* ── TAB BAR ── */
+#tabbar{height:calc(var(--tbh) + var(--sb));padding-bottom:var(--sb);
+  display:flex;background:var(--s1);border-top:1px solid var(--bd);flex-shrink:0}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding-top:6px;cursor:pointer;background:none;
+  color:var(--t3);transition:color .18s;border:none}
+.tb.on{color:var(--c)}
+.tb svg{width:21px;height:21px;transition:transform .18s}
+.tb.on svg{transform:scale(1.08)}
+.tb span{font-family:var(--mn);font-size:.56rem;letter-spacing:.04em}
+
+/* ── TOP BAR ── */
+.bar{padding:calc(var(--st)+.88rem) 1.2rem .78rem;
+  display:flex;align-items:center;gap:.72rem;flex-shrink:0;
+  background:var(--bg);border-bottom:1px solid var(--bd);
+  position:sticky;top:0;z-index:9}
+.brand{display:flex;align-items:center;gap:.48rem}
+.brand-name{font-size:1rem;font-weight:800}
+.brand-name em{color:var(--c);font-style:normal}
+.bar-title{font-size:.9rem;font-weight:800;flex:1}
+.bar-tag{font-family:var(--mn);font-size:.56rem;color:var(--t3);
+  letter-spacing:.1em;text-transform:uppercase;margin-left:auto}
+.btn-bk{width:34px;height:34px;border-radius:50%;background:var(--s1);
+  border:1px solid var(--bd);color:var(--t2);display:flex;align-items:center;
+  justify-content:center;cursor:pointer;transition:all .14s;flex-shrink:0}
+.btn-bk:active{background:var(--s2);border-color:var(--c)}
+
+/* ══ HOME TAB ══ */
+.home-body{flex:1;display:flex;flex-direction:column;
+  padding:0 1.2rem calc(1.4rem);gap:0}
+
+.hero{padding:1.8rem 0 1.4rem;display:flex;flex-direction:column;gap:.5rem}
+.hero-label{font-family:var(--mn);font-size:.6rem;color:var(--c);
+  letter-spacing:.15em;text-transform:uppercase}
+.hero-title{font-size:1.6rem;font-weight:800;line-height:1.15;letter-spacing:-.02em}
+.hero-title em{color:var(--c);font-style:normal}
+.hero-sub{font-family:var(--mn);font-size:.7rem;color:var(--t2);
+  line-height:1.7;margin-top:.25rem}
+
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.6rem}
+.action-btn{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:1.5rem 1rem 1.3rem;display:flex;flex-direction:column;align-items:center;
+  gap:.65rem;cursor:pointer;transition:all .2s;text-align:center;
+  position:relative;overflow:hidden}
+.action-btn::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 110%,var(--cd),transparent 65%);
+  opacity:0;transition:opacity .3s}
+.action-btn:hover::before,.action-btn:active::before{opacity:1}
+.action-btn:hover{border-color:var(--c);transform:translateY(-2px)}
+.action-btn:active{transform:scale(.97)}
+.ab-ic{width:38px;height:38px;color:var(--c)}
+.ab-title{font-size:.88rem;font-weight:800}
+.ab-sub{font-family:var(--mn);font-size:.58rem;color:var(--t2);line-height:1.6}
+
+.home-hist-label{font-size:.78rem;font-weight:800;color:var(--t2);
+  margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between}
+.home-hist-see{font-family:var(--mn);font-size:.58rem;color:var(--c);
+  background:none;cursor:pointer;padding:0;transition:opacity .15s}
+.home-hist-see:hover{opacity:.7}
+.home-hist-preview{display:flex;flex-direction:column;gap:.45rem}
+.home-empty{font-family:var(--mn);font-size:.66rem;color:var(--t3);
+  padding:1.4rem;text-align:center;border:1px dashed var(--bd);
+  border-radius:var(--r)}
+
+/* ══ ENCODE TAB ══ */
+.enc-body{flex:1;display:flex;flex-direction:column;
+  padding:1rem 1.2rem 1.4rem;gap:.9rem}
+.pills{display:flex;gap:.4rem;overflow-x:auto;padding:.2rem 0;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;display:flex;align-items:center;gap:.34rem;background:var(--s1);
+  border:1px solid var(--bd);border-radius:50px;padding:.34rem .78rem;
+  font-family:var(--mn);font-size:.64rem;cursor:pointer;
+  color:var(--t2);white-space:nowrap;transition:all .14s}
+.pill:hover{border-color:var(--bd2);color:var(--tx)}
+.pill.on{background:var(--cd);border-color:var(--c);color:var(--c)}
+.pill svg{width:11px;height:11px;flex-shrink:0}
+.form{display:flex;flex-direction:column;gap:.7rem}
+.fg{display:flex;flex-direction:column;gap:.26rem}
+.flbl{font-family:var(--mn);font-size:.55rem;color:var(--t3);
+  letter-spacing:.1em;text-transform:uppercase}
+.fi,.fsl,.fta{width:100%;background:var(--s1);border:1px solid var(--bd);
+  border-radius:var(--r2);padding:.68rem 1rem;color:var(--tx);
+  font-family:var(--mn);font-size:.77rem;transition:border-color .14s}
+.fi:focus,.fsl:focus,.fta:focus{border-color:var(--c)}
+.fi::placeholder,.fta::placeholder{color:var(--t3)}
+.fsl option{background:var(--s2)}
+.fta{min-height:66px;resize:none}
+.crow{display:flex;gap:.7rem}
+.cg{flex:1;display:flex;flex-direction:column;gap:.26rem}
+.cpick{display:flex;align-items:center;gap:.5rem;background:var(--s1);
+  border:1px solid var(--bd);border-radius:var(--r2);padding:.45rem .8rem}
+input[type=color]{width:22px;height:22px;border:none;border-radius:4px;
+  cursor:pointer;background:none;padding:0;-webkit-appearance:none;appearance:none}
+.chex{font-family:var(--mn);font-size:.68rem;color:var(--t2)}
+.logo-zone{background:var(--s1);border:1px dashed var(--bd2);
+  border-radius:var(--r2);padding:.68rem 1rem;
+  display:flex;align-items:center;gap:.68rem;cursor:pointer;transition:border-color .14s}
+.logo-zone:hover{border-color:var(--c)}
+.logo-th{width:28px;height:28px;border-radius:6px;background:var(--s2);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.logo-th img{width:100%;height:100%;object-fit:cover}
+.logo-info{flex:1}
+.logo-fn{font-family:var(--mn);font-size:.64rem;color:var(--t2)}
+.logo-hn{font-family:var(--mn);font-size:.55rem;color:var(--t3);margin-top:.08rem}
+.logo-rm{background:none;color:var(--t3);cursor:pointer;display:flex;
+  align-items:center;padding:.15rem;transition:color .14s}
+.logo-rm:hover{color:var(--red)}
+.btn-main{width:100%;padding:.88rem;background:var(--c);color:#000;
+  font-family:var(--fn);font-size:.92rem;font-weight:800;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;gap:.46rem;
+  cursor:pointer;transition:all .14s;margin-top:.2rem}
+.btn-main:hover{background:var(--c2);transform:translateY(-1px);
+  box-shadow:0 8px 26px rgba(34,211,238,.18)}
+.btn-main:active{transform:scale(.98)}
+
+/* ══ SCAN TAB ══ */
+.scan-body{flex:1;display:flex;flex-direction:column;padding:1.2rem;gap:1rem}
+.scan-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.scan-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:1.4rem 1rem;display:flex;flex-direction:column;align-items:center;
+  gap:.58rem;cursor:pointer;transition:all .18s;text-align:center}
+.scan-card:hover{border-color:var(--c);background:rgba(34,211,238,.04)}
+.scan-card:active{transform:scale(.97)}
+.sc-ic{width:32px;height:32px;color:var(--c)}
+.sc-t{font-size:.82rem;font-weight:800}
+.sc-s{font-family:var(--mn);font-size:.58rem;color:var(--t2);line-height:1.5}
+.cam-wrap{display:none;flex-direction:column;gap:.8rem;background:var(--s1);
+  border:1px solid var(--bd);border-radius:var(--r);padding:1rem}
+.cam-wrap.show{display:flex}
+.cam-frame{position:relative;border-radius:var(--r2);overflow:hidden;background:#000}
+video{width:100%;display:block;border-radius:var(--r2)}
+.cam-ov{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;pointer-events:none}
+.scan-sq{width:56%;aspect-ratio:1;border:2px solid var(--c);border-radius:10px;
+  box-shadow:0 0 0 9999px rgba(5,10,15,.62);animation:sqglow 2s ease-in-out infinite}
+@keyframes sqglow{
+  0%,100%{box-shadow:0 0 0 9999px rgba(5,10,15,.62),0 0 0 0 rgba(34,211,238,.4)}
+  50%{box-shadow:0 0 0 9999px rgba(5,10,15,.62),0 0 0 10px transparent}}
+.scan-line{position:absolute;left:22%;right:22%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--c),transparent);
+  animation:scanmv 2s ease-in-out infinite}
+@keyframes scanmv{0%,100%{top:22%}50%{top:78%}}
+.btn-stopcam{background:none;border:1px solid var(--bd2);color:var(--t2);
+  padding:.5rem;border-radius:var(--r2);font-family:var(--mn);font-size:.68rem;
+  cursor:pointer;transition:all .14s}
+.btn-stopcam:hover{border-color:var(--red);color:var(--red)}
+.scan-result{display:none;background:var(--s1);border:1px solid var(--bd);
+  border-radius:var(--r);padding:1.15rem;flex-direction:column;gap:.82rem}
+.scan-result.show{display:flex}
+.sr-tag{display:inline-flex;align-items:center;gap:.36rem;background:var(--cd);
+  border:1px solid rgba(34,211,238,.2);border-radius:50px;
+  padding:.22rem .65rem;align-self:flex-start;font-family:var(--mn);font-size:.58rem;color:var(--c)}
+.sr-dot{width:5px;height:5px;border-radius:50%;background:var(--c);animation:blink 1.4s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sr-body{font-family:var(--mn);font-size:.73rem;color:var(--tx);line-height:1.7;
+  word-break:break-all;padding:.7rem;background:var(--s2);border-radius:var(--r2)}
+.sr-btns{display:flex;gap:.48rem;flex-wrap:wrap}
+.btn-a{display:inline-flex;align-items:center;gap:.36rem;padding:.44rem .86rem;
+  font-family:var(--fn);font-size:.74rem;font-weight:700;border-radius:var(--r2);
+  text-decoration:none;background:var(--c);color:#000;transition:background .14s;cursor:pointer;border:none}
+.btn-a:hover{background:var(--c2)}
+.btn-b{display:inline-flex;align-items:center;gap:.36rem;padding:.44rem .86rem;
+  font-family:var(--fn);font-size:.74rem;font-weight:700;border-radius:var(--r2);
+  cursor:pointer;background:transparent;color:var(--t2);
+  border:1px solid var(--bd2);transition:all .14s}
+.btn-b:hover{color:var(--tx);background:var(--s2)}
+
+/* ══ HISTORY TAB ══ */
+.hist-body{flex:1;display:flex;flex-direction:column;
+  padding:1rem 1.2rem 1.4rem;gap:.75rem}
+.hist-hdr{display:flex;align-items:center;justify-content:space-between}
+.hist-count{font-family:var(--mn);font-size:.58rem;color:var(--t3)}
+.btn-clrall{font-family:var(--mn);font-size:.58rem;color:var(--t3);
+  background:none;cursor:pointer;padding:.18rem 0;transition:color .14s}
+.btn-clrall:hover{color:var(--red)}
+.hi-list{display:flex;flex-direction:column;gap:.48rem}
+.empty{font-family:var(--mn);font-size:.65rem;color:var(--t3);
+  padding:2.4rem 1rem;text-align:center;border:1px dashed var(--bd);
+  border-radius:var(--r);line-height:1.8}
+
+/* ── SHARED HIST ITEM ── */
+.hi{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);
+  padding:.76rem 1rem;display:flex;align-items:center;gap:.82rem;cursor:pointer;
+  transition:border-color .14s;-webkit-tap-highlight-color:transparent}
+.hi:hover{border-color:var(--bd2)}
+.hi-th{width:40px;height:40px;border-radius:8px;background:var(--s2);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.hi-th img{width:100%;height:100%;object-fit:cover}
+.hi-info{flex:1;min-width:0}
+.hi-label{font-size:.77rem;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-meta{font-family:var(--mn);font-size:.56rem;color:var(--t3);margin-top:.1rem}
+.hi-badge{font-family:var(--mn);font-size:.54rem;background:var(--cd);
+  color:var(--c);padding:.12rem .44rem;border-radius:3px;flex-shrink:0}
+.hi-arrow{color:var(--t3);flex-shrink:0;display:flex;align-items:center}
+
+/* ══ LOADING OVERLAY ══ */
+#ov-load{align-items:center;justify-content:center}
+.spin-wrap{display:flex;flex-direction:column;align-items:center;gap:2rem;text-align:center}
+.spinner{position:relative;width:68px;height:68px}
+.sp-o{width:68px;height:68px;border-radius:50%;border:3px solid var(--bd2);
+  border-top-color:var(--c);animation:spin 1s linear infinite}
+.sp-i{position:absolute;inset:12px;border-radius:50%;border:2px solid var(--bd);
+  border-bottom-color:var(--c2);animation:spin .72s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-title{font-size:1.15rem;font-weight:800}
+.spin-note{font-family:var(--mn);font-size:.65rem;color:var(--t2)}
+.prog-rail{width:150px;height:3px;background:var(--bd);border-radius:2px}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--c),var(--c2));
+  border-radius:2px;width:0%;transition:width .26s ease}
+
+/* ══ DETAIL OVERLAY ══ */
+.det-body{flex:1;display:flex;flex-direction:column;
+  padding:0 1.2rem calc(var(--sb)+1.5rem);gap:1.3rem}
+.qr-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:1.7rem;display:flex;flex-direction:column;align-items:center;gap:.9rem}
+.qr-white{background:#fff;border-radius:var(--r2);padding:13px;
+  display:inline-flex;align-items:center;justify-content:center}
+.qr-white canvas,.qr-white img{display:block;width:200px;height:200px}
+.qr-badge{font-family:var(--mn);font-size:.58rem;background:var(--cd);
+  color:var(--c);padding:.18rem .55rem;border-radius:3px}
+.qr-snippet{font-family:var(--mn);font-size:.63rem;color:var(--t2);
+  text-align:center;word-break:break-all;width:100%;line-height:1.7;
+  max-height:46px;overflow:hidden}
+.info-card{background:var(--s1);border:1px solid var(--bd);
+  border-radius:var(--r);padding:1.05rem 1.15rem;display:flex;flex-direction:column;gap:.9rem}
+.ic-row{display:flex;flex-direction:column;gap:.22rem}
+.ic-lbl{font-family:var(--mn);font-size:.54rem;color:var(--t3);
+  letter-spacing:.1em;text-transform:uppercase}
+.ic-val{font-family:var(--mn);font-size:.76rem;color:var(--tx);
+  word-break:break-all;line-height:1.6}
+.det-acts{display:flex;flex-direction:column;gap:.55rem}
+.btn-dl{width:100%;padding:.86rem;background:var(--c);color:#000;
+  font-family:var(--fn);font-size:.9rem;font-weight:800;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;gap:.44rem;
+  cursor:pointer;transition:all .14s}
+.btn-dl:hover{background:var(--c2);transform:translateY(-1px)}
+.btn-edit{width:100%;padding:.78rem;background:transparent;color:var(--t2);
+  border:1px solid var(--bd2);border-radius:var(--r);font-family:var(--fn);
+  font-size:.84rem;font-weight:700;display:flex;align-items:center;
+  justify-content:center;gap:.44rem;cursor:pointer;transition:all .14s}
+.btn-edit:hover{background:var(--s1);color:var(--tx)}
+.btn-delete{width:100%;padding:.78rem;background:transparent;color:var(--red);
+  border:1px solid rgba(248,113,113,.22);border-radius:var(--r);font-family:var(--fn);
+  font-size:.84rem;font-weight:700;display:flex;align-items:center;
+  justify-content:center;gap:.44rem;cursor:pointer;transition:all .14s}
+.btn-delete:hover{background:rgba(248,113,113,.07)}
+
+/* ══ EDIT OVERLAY ══ */
+.edit-body{flex:1;display:flex;flex-direction:column;
+  padding:0 1.2rem calc(var(--sb)+1.5rem);gap:.9rem}
+
+/* ══ TOASTS ══ */
+#toasts{position:fixed;bottom:calc(var(--tbh) + var(--sb) + .7rem);
+  left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:.32rem;z-index:999;pointer-events:none}
+.toast{background:var(--s2);border:1px solid var(--bd2);border-radius:50px;
+  padding:.42rem 1rem;font-family:var(--mn);font-size:.66rem;white-space:nowrap;
+  animation:tpop .2s ease;display:flex;align-items:center;gap:.36rem}
+.toast.ok{border-color:rgba(34,211,238,.32);color:var(--c)}
+.toast.err{border-color:rgba(248,113,113,.32);color:var(--red)}
+@keyframes tpop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="shell">
+  <div id="panes">
+
+    <!-- ══ HOME TAB ══ -->
+    <div class="pg here" id="pg-home">
+      <div class="bar">
+        <div class="brand">
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="#0b1923"/>
+            <rect x="4" y="4" width="8" height="8" rx="1.5" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+            <rect x="6" y="6" width="4" height="4" rx=".5" fill="#22d3ee"/>
+            <rect x="16" y="4" width="8" height="8" rx="1.5" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+            <rect x="18" y="6" width="4" height="4" rx=".5" fill="#22d3ee"/>
+            <rect x="4" y="16" width="8" height="8" rx="1.5" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+            <rect x="6" y="18" width="4" height="4" rx=".5" fill="#22d3ee"/>
+            <rect x="16" y="16" width="3" height="3" rx=".5" fill="#22d3ee" opacity=".5"/>
+            <rect x="21" y="16" width="3" height="3" rx=".5" fill="#22d3ee" opacity=".9"/>
+            <rect x="16" y="21" width="3" height="3" rx=".5" fill="#22d3ee" opacity=".8"/>
+            <rect x="21" y="21" width="3" height="3" rx=".5" fill="#22d3ee" opacity=".3"/>
+          </svg>
+          <div class="brand-name">Code<em>QR</em></div>
+        </div>
+        <div class="bar-tag">EML Tech Studio</div>
+      </div>
+      <div class="home-body">
+        <div class="hero">
+          <div class="hero-label">QR Code Tool</div>
+          <div class="hero-title">Encode. Scan.<br/><em>Decode.</em></div>
+          <div class="hero-sub">Create QR codes for URLs, contacts,<br/>WiFi, and more — all on-device.</div>
+        </div>
+        <div class="action-grid">
+          <div class="action-btn" id="h-encode">
+            <svg class="ab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/>
+              <rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/>
+            </svg>
+            <div class="ab-title">Encode</div>
+            <div class="ab-sub">Create a QR code from any data</div>
+          </div>
+          <div class="action-btn" id="h-scan">
+            <svg class="ab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+              <line x1="7" y1="12" x2="17" y2="12"/>
+            </svg>
+            <div class="ab-title">Scan</div>
+            <div class="ab-sub">Camera or pick from gallery</div>
+          </div>
+        </div>
+        <div class="home-hist-label">
+          Recent
+          <button class="home-hist-see" id="h-see-all">See all →</button>
+        </div>
+        <div class="home-hist-preview" id="home-recent"></div>
+      </div>
+    </div>
+
+    <!-- ══ ENCODE TAB ══ -->
+    <div class="pg right" id="pg-enc">
+      <div class="bar">
+        <div class="bar-title">New QR Code</div>
+        <div class="bar-tag">Encode</div>
+      </div>
+      <div class="enc-body">
+        <div class="pills" id="enc-pills"></div>
+        <div class="form" id="enc-form"></div>
+        <div class="fg">
+          <div class="flbl">Colors</div>
+          <div class="crow">
+            <div class="cg">
+              <div class="flbl">QR</div>
+              <div class="cpick">
+                <input type="color" id="c-fg" value="#000000"/>
+                <span class="chex" id="c-fg-v">#000000</span>
+              </div>
+            </div>
+            <div class="cg">
+              <div class="flbl">Background</div>
+              <div class="cpick">
+                <input type="color" id="c-bg" value="#ffffff"/>
+                <span class="chex" id="c-bg-v">#ffffff</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="flbl">Logo — optional</div>
+          <div class="logo-zone" id="logo-zone">
+            <div class="logo-th" id="logo-th">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <div class="logo-info">
+              <div class="logo-fn" id="logo-name">Add logo</div>
+              <div class="logo-hn">Placed at the center of the QR</div>
+            </div>
+            <button class="logo-rm" id="logo-rm" style="display:none">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <input type="file" id="logo-input" accept="image/*" style="display:none"/>
+        </div>
+        <button class="btn-main" id="btn-gen">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          Generate QR Code
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ SCAN TAB ══ -->
+    <div class="pg right" id="pg-scan">
+      <div class="bar">
+        <div class="bar-title">Scan QR Code</div>
+      </div>
+      <div class="scan-body">
+        <div class="scan-grid" id="scan-grid">
+          <div class="scan-card" id="sc-cam">
+            <svg class="sc-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <div class="sc-t">Camera</div>
+            <div class="sc-s">Live scan</div>
+          </div>
+          <div class="scan-card" id="sc-gal">
+            <svg class="sc-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <div class="sc-t">Gallery</div>
+            <div class="sc-s">Pick an image</div>
+          </div>
+        </div>
+        <input type="file" id="gal-input" accept="image/*" style="display:none"/>
+        <div class="cam-wrap" id="cam-wrap">
+          <div class="cam-frame">
+            <video id="cam-vid" autoplay muted playsinline></video>
+            <div class="cam-ov"><div class="scan-sq"></div><div class="scan-line"></div></div>
+          </div>
+          <button class="btn-stopcam" id="btn-stopcam">Stop Camera</button>
+        </div>
+        <div class="scan-result" id="scan-result">
+          <div class="sr-tag"><div class="sr-dot"></div><span id="sr-type">Text</span></div>
+          <div class="sr-body" id="sr-body"></div>
+          <div class="sr-btns" id="sr-btns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORY TAB ══ -->
+    <div class="pg right" id="pg-hist">
+      <div class="bar">
+        <div class="bar-title">History</div>
+        <button class="btn-clrall" id="btn-clrall">Clear all</button>
+      </div>
+      <div class="hist-body">
+        <div class="hist-hdr">
+          <div class="hist-count" id="hist-count"></div>
+        </div>
+        <div class="hi-list" id="hist-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /panes -->
+
+  <!-- TAB BAR -->
+  <div id="tabbar">
+    <button class="tb on" data-pg="pg-home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </button>
+    <button class="tb" data-pg="pg-enc">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/>
+        <rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/>
+      </svg>
+      <span>Encode</span>
+    </button>
+    <button class="tb" data-pg="pg-scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+        <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+        <line x1="7" y1="12" x2="17" y2="12"/>
+      </svg>
+      <span>Scan</span>
+    </button>
+    <button class="tb" data-pg="pg-hist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10"/>
+        <polyline points="12 6 12 12 16 14"/>
+        <polyline points="22 2 22 8 16 8"/>
+      </svg>
+      <span>History</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══ LOADING OVERLAY ══ -->
+<div class="ov" id="ov-load">
+  <div class="spin-wrap">
+    <div class="spinner"><div class="sp-o"></div><div class="sp-i"></div></div>
+    <div>
+      <div class="spin-title">Encoding</div>
+      <div class="spin-note">Building your QR code...</div>
+    </div>
+    <div class="prog-rail"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+</div>
+
+<!-- ══ DETAIL OVERLAY ══ -->
+<div class="ov" id="ov-detail">
+  <div class="bar">
+    <button class="btn-bk" id="det-back">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="bar-title" id="det-title">QR Code</div>
+  </div>
+  <div class="det-body">
+    <div class="qr-card">
+      <div class="qr-white" id="det-qr-wrap"></div>
+      <div class="qr-badge" id="det-badge"></div>
+      <div class="qr-snippet" id="det-snippet"></div>
+    </div>
+    <div class="info-card">
+      <div class="ic-row">
+        <div class="ic-lbl">Content</div>
+        <div class="ic-val" id="det-content"></div>
+      </div>
+      <div class="ic-row">
+        <div class="ic-lbl">Type</div>
+        <div class="ic-val" id="det-type"></div>
+      </div>
+      <div class="ic-row">
+        <div class="ic-lbl">Created</div>
+        <div class="ic-val" id="det-date"></div>
+      </div>
+    </div>
+    <div class="det-acts">
+      <button class="btn-dl" id="btn-det-dl">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download to Device
+      </button>
+      <button class="btn-edit" id="btn-det-edit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit &amp; Regenerate
+      </button>
+      <button class="btn-delete" id="btn-det-del">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        </svg>
+        Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT OVERLAY ══ -->
+<div class="ov" id="ov-edit">
+  <div class="bar">
+    <button class="btn-bk" id="edit-back">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="bar-title">Edit QR Code</div>
+    <div class="bar-tag">Regenerate</div>
+  </div>
+  <div class="edit-body">
+    <div class="pills" id="edit-pills"></div>
+    <div class="form" id="edit-form"></div>
+    <div class="fg">
+      <div class="flbl">Colors</div>
+      <div class="crow">
+        <div class="cg">
+          <div class="flbl">QR</div>
+          <div class="cpick">
+            <input type="color" id="e-fg" value="#000000"/>
+            <span class="chex" id="e-fg-v">#000000</span>
+          </div>
+        </div>
+        <div class="cg">
+          <div class="flbl">Background</div>
+          <div class="cpick">
+            <input type="color" id="e-bg" value="#ffffff"/>
+            <span class="chex" id="e-bg-v">#ffffff</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-main" id="btn-regen">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Save &amp; Regenerate
+    </button>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./codeqr-sw.js').catch(function(){});
+
+/* ── DB ── */
+var DB = null;
+function openDB() {
+  return new Promise(function(res, rej) {
+    var r = indexedDB.open('codeqr5', 1);
+    r.onupgradeneeded = function(e){ e.target.result.createObjectStore('items',{keyPath:'id'}); };
+    r.onsuccess = function(e){ DB=e.target.result; res(); };
+    r.onerror = rej;
+  });
+}
+function dbtx(mode, fn) {
+  return new Promise(function(res, rej) {
+    var t=DB.transaction('items',mode), s=t.objectStore('items'), r=fn(s);
+    r.onsuccess=function(){ res(r.result); };
+    r.onerror=rej;
+  });
+}
+var dbPut   = function(v)  { return dbtx('readwrite',function(s){return s.put(v);}); };
+var dbAll   = function()   { return dbtx('readonly', function(s){return s.getAll();}); };
+var dbDel   = function(id) { return dbtx('readwrite',function(s){return s.delete(id);}); };
+var dbClear = function()   { return dbtx('readwrite',function(s){return s.clear();}); };
+
+/* ── TABS ── */
+var TABS = ['pg-home','pg-enc','pg-scan','pg-hist'];
+var curTab = 'pg-home';
+function goTab(id) {
+  var fi=TABS.indexOf(curTab), ti=TABS.indexOf(id);
+  document.getElementById(curTab).className='pg '+(ti>fi?'left':'right');
+  document.getElementById(id).className='pg here';
+  document.querySelectorAll('.tb').forEach(function(b){
+    b.classList.toggle('on', b.dataset.pg===id);
+  });
+  if (id==='pg-scan') resetScan();
+  if (id==='pg-hist'||id==='pg-home') loadHist();
+  curTab=id;
+}
+document.querySelectorAll('.tb').forEach(function(b){
+  b.addEventListener('click',function(){ goTab(b.dataset.pg); });
+});
+
+/* ── OVERLAYS ── */
+function openOv(id){ document.getElementById(id).classList.add('up'); }
+function closeOv(id){ document.getElementById(id).classList.remove('up'); }
+
+/* ── QR TYPES ── */
+var TYPES = [
+  { id:'url', name:'Website',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    fields:[{id:'url',label:'URL',ph:'https://example.com',type:'input'}],
+    build:function(d){return d.url||'';}
+  },
+  { id:'text', name:'Text',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>',
+    fields:[{id:'t',label:'Text',ph:'Anything...',type:'textarea'}],
+    build:function(d){return d.t||'';}
+  },
+  { id:'contact', name:'Contact',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    fields:[{id:'n',label:'Name',ph:'Jane Smith',type:'input'},{id:'ph',label:'Phone',ph:'+1 555 000',type:'input'},{id:'em',label:'Email',ph:'jane@example.com',type:'input'},{id:'og',label:'Org',ph:'Company',type:'input'}],
+    build:function(d){return 'BEGIN:VCARD\nVERSION:3.0\nFN:'+(d.n||'')+'\nTEL:'+(d.ph||'')+'\nEMAIL:'+(d.em||'')+'\nORG:'+(d.og||'')+'\nEND:VCARD';}
+  },
+  { id:'wifi', name:'WiFi',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
+    fields:[{id:'ss',label:'Network Name',ph:'MyWiFi',type:'input'},{id:'pw',label:'Password',ph:'password',type:'input'},{id:'sc',label:'Security',type:'select',opts:['WPA','WEP','None']}],
+    build:function(d){return 'WIFI:T:'+(d.sc||'WPA')+';S:'+(d.ss||'')+';P:'+(d.pw||'')+';;';}
+  },
+  { id:'email', name:'Email',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+    fields:[{id:'to',label:'To',ph:'name@example.com',type:'input'},{id:'sb',label:'Subject',ph:'Hello!',type:'input'},{id:'bd',label:'Message',ph:'...',type:'textarea'}],
+    build:function(d){return 'mailto:'+(d.to||'')+'?subject='+encodeURIComponent(d.sb||'')+'&body='+encodeURIComponent(d.bd||'');}
+  },
+  { id:'phone', name:'Phone',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.62 4.84 2 2 0 0 1 3.6 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.6a16 16 0 0 0 5.49 5.49l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 18.2z"/></svg>',
+    fields:[{id:'num',label:'Phone Number',ph:'+1 555 000 0000',type:'input'}],
+    build:function(d){return 'tel:'+(d.num||'');}
+  },
+  { id:'sms', name:'SMS',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    fields:[{id:'nm',label:'Phone',ph:'+1 555 000 0000',type:'input'},{id:'ms',label:'Message',ph:'Optional...',type:'textarea'}],
+    build:function(d){return 'sms:'+(d.nm||'')+(d.ms?'?body='+encodeURIComponent(d.ms):'');}
+  },
+  { id:'geo', name:'Location',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    fields:[{id:'la',label:'Latitude',ph:'40.7128',type:'input'},{id:'ln',label:'Longitude',ph:'-74.0060',type:'input'}],
+    build:function(d){return 'geo:'+(d.la||'0')+','+(d.ln||'0');}
+  }
+];
+
+/* ── STATE ── */
+var encType  = TYPES[0];
+var editType = TYPES[0];
+var logoData = null;
+var detailQREl = null;
+var currentItem = null;
+var camStream = null, camAF = null;
+
+/* ── HELPERS ── */
+function on(id,ev,fn){ document.getElementById(id).addEventListener(ev,fn); }
+function wait(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+function setP(v){ document.getElementById('prog-fill').style.width=v+'%'; }
+
+/* ── PILL + FIELD BUILDER ── */
+function makePills(rowId, activeType, onPick) {
+  var row = document.getElementById(rowId);
+  row.innerHTML = '';
+  TYPES.forEach(function(t) {
+    var el = document.createElement('div');
+    el.className = 'pill' + (t.id===activeType.id?' on':'');
+    el.innerHTML = t.icon + '<span>'+t.name+'</span>';
+    el.addEventListener('click', function(){
+      row.querySelectorAll('.pill').forEach(function(p){p.classList.remove('on');});
+      el.classList.add('on');
+      onPick(t);
+    });
+    row.appendChild(el);
+  });
+}
+
+function makeFields(formId, type, prefix) {
+  var wrap = document.getElementById(formId);
+  wrap.innerHTML = '';
+  type.fields.forEach(function(f) {
+    var g=document.createElement('div'); g.className='fg';
+    var lbl=document.createElement('div'); lbl.className='flbl'; lbl.textContent=f.label;
+    var inp;
+    if (f.type==='textarea'){
+      inp=document.createElement('textarea'); inp.className='fta'; inp.placeholder=f.ph||'';
+    } else if (f.type==='select'){
+      inp=document.createElement('select'); inp.className='fsl';
+      (f.opts||[]).forEach(function(o){var opt=document.createElement('option');opt.value=o;opt.textContent=o;inp.appendChild(opt);});
+    } else {
+      inp=document.createElement('input'); inp.className='fi'; inp.type='text'; inp.placeholder=f.ph||'';
+    }
+    inp.id=prefix+f.id;
+    g.appendChild(lbl); g.appendChild(inp);
+    wrap.appendChild(g);
+  });
+}
+
+function getFields(type, prefix) {
+  var d={};
+  type.fields.forEach(function(f){
+    var el=document.getElementById(prefix+f.id);
+    if(el) d[f.id]=el.value.trim();
+  });
+  return d;
+}
+
+function fillFields(type, prefix, data) {
+  type.fields.forEach(function(f){
+    var el=document.getElementById(prefix+f.id);
+    if(el && data && data[f.id]!==undefined) el.value=data[f.id];
+  });
+}
+
+/* ── INIT ENCODE TAB ── */
+function initEncode() {
+  makePills('enc-pills', encType, function(t){
+    encType=t;
+    makeFields('enc-form', encType, 'h_');
+  });
+  makeFields('enc-form', encType, 'h_');
+}
+
+/* ── GENERATE ── */
+async function doGenerate(type, data, fg, bg, logoUrl, saveId) {
+  var content = type.build(data);
+  if (!content || content.length < 2) { toast('Fill in at least one field','err'); return; }
+
+  openOv('ov-load');
+  setP(8); await wait(140); setP(38); await wait(190);
+
+  try {
+    var tmp = document.createElement('div');
+    var sz = 220;
+    new QRCode(tmp, {text:content,width:sz,height:sz,colorDark:fg,colorLight:bg,correctLevel:QRCode.CorrectLevel.H});
+    await wait(300); setP(72);
+
+    var qrEl = tmp.querySelector('canvas') || tmp.querySelector('img');
+
+    if (logoUrl && qrEl) {
+      var fc=document.createElement('canvas'); fc.width=sz; fc.height=sz;
+      var ctx=fc.getContext('2d');
+      var base=new Image();
+      await new Promise(function(r){base.onload=r; base.src=qrEl.tagName==='CANVAS'?qrEl.toDataURL():qrEl.src;});
+      ctx.drawImage(base,0,0,sz,sz);
+      var lgo=new Image();
+      await new Promise(function(r){lgo.onload=r; lgo.src=logoUrl;});
+      var ls=sz*.22, lx=(sz-ls)/2, ly=(sz-ls)/2;
+      ctx.fillStyle=bg;
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(lx-5,ly-5,ls+10,ls+10,6); else ctx.rect(lx-5,ly-5,ls+10,ls+10);
+      ctx.fill();
+      ctx.drawImage(lgo,lx,ly,ls,ls);
+      qrEl=fc;
+    }
+
+    var fullPng='', thumb='';
+    try {
+      fullPng = qrEl.tagName==='CANVAS' ? qrEl.toDataURL('image/png') : qrEl.src;
+      thumb   = qrEl.tagName==='CANVAS' ? qrEl.toDataURL('image/png',0.45) : qrEl.src;
+    } catch(e){}
+
+    var item = {
+      id: saveId || Date.now().toString(),
+      typeName: type.name,
+      typeId: type.id,
+      content: content,
+      fieldData: data,
+      fg: fg, bg: bg,
+      at: new Date().toISOString(),
+      thumb: thumb,
+      qrData: fullPng
+    };
+    await dbPut(item);
+    setP(100); await wait(160);
+    closeOv('ov-load');
+    closeOv('ov-edit');
+    loadHist();
+    openDetail(item);
+    toast('QR code saved!','ok');
+  } catch(err) {
+    console.error(err);
+    closeOv('ov-load');
+    toast('Generation failed — check fields','err');
+  }
+}
+
+/* ── DETAIL OVERLAY ── */
+function openDetail(item) {
+  currentItem = item;
+  document.getElementById('det-title').textContent  = item.typeName;
+  document.getElementById('det-badge').textContent  = item.typeName;
+  document.getElementById('det-type').textContent   = item.typeName;
+  document.getElementById('det-content').textContent = item.content;
+  document.getElementById('det-snippet').textContent = item.content.length>80 ? item.content.slice(0,80)+'...' : item.content;
+  document.getElementById('det-date').textContent   = new Date(item.at).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+
+  var wrap = document.getElementById('det-qr-wrap');
+  wrap.innerHTML = '';
+  detailQREl = null;
+
+  if (item.qrData) {
+    var img=document.createElement('img');
+    img.src=item.qrData;
+    img.style.cssText='display:block;width:200px;height:200px';
+    wrap.appendChild(img);
+    detailQREl = img;
+  } else {
+    new QRCode(wrap,{text:item.content,width:200,height:200,colorDark:item.fg||'#000',colorLight:item.bg||'#fff',correctLevel:QRCode.CorrectLevel.H});
+    setTimeout(function(){detailQREl=wrap.querySelector('canvas')||wrap.querySelector('img');},400);
+  }
+  openOv('ov-detail');
+}
+
+/* ── EDIT OVERLAY ── */
+function openEdit(item) {
+  editType = TYPES.find(function(t){return t.id===item.typeId;}) || TYPES[0];
+  makePills('edit-pills', editType, function(t){
+    editType=t;
+    makeFields('edit-form', editType, 'e_');
+  });
+  makeFields('edit-form', editType, 'e_');
+  fillFields(editType, 'e_', item.fieldData);
+  document.getElementById('e-fg').value = item.fg||'#000000';
+  document.getElementById('e-fg-v').textContent = item.fg||'#000000';
+  document.getElementById('e-bg').value = item.bg||'#ffffff';
+  document.getElementById('e-bg-v').textContent = item.bg||'#ffffff';
+  openOv('ov-edit');
+}
+
+/* ── HISTORY ── */
+function makeHiEl(item, showArrow) {
+  var row=document.createElement('div'); row.className='hi';
+  var th=document.createElement('div'); th.className='hi-th';
+  if(item.thumb){var img=document.createElement('img');img.src=item.thumb;th.appendChild(img);}
+  var info=document.createElement('div'); info.className='hi-info';
+  var lbl=document.createElement('div'); lbl.className='hi-label';
+  lbl.textContent=item.content.length>42?item.content.slice(0,42)+'...':item.content;
+  var ts=document.createElement('div'); ts.className='hi-meta';
+  ts.textContent=new Date(item.at).toLocaleString([],{dateStyle:'short',timeStyle:'short'});
+  info.appendChild(lbl); info.appendChild(ts);
+  var badge=document.createElement('div'); badge.className='hi-badge'; badge.textContent=item.typeName;
+  row.appendChild(th); row.appendChild(info); row.appendChild(badge);
+  if (showArrow) {
+    var arr=document.createElement('div'); arr.className='hi-arrow';
+    arr.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>';
+    row.appendChild(arr);
+  }
+  row.addEventListener('click',function(){openDetail(item);});
+  return row;
+}
+
+async function loadHist() {
+  var items = await dbAll();
+  items.sort(function(a,b){return new Date(b.at)-new Date(a.at);});
+
+  // history tab
+  var list=document.getElementById('hist-list');
+  if (list) {
+    list.innerHTML='';
+    var count=document.getElementById('hist-count');
+    if(count) count.textContent=items.length?items.length+' item'+(items.length>1?'s':''):'';
+    if (!items.length) {
+      list.innerHTML='<div class="empty">No QR codes yet.<br/>Create one on the Encode tab.</div>';
+    } else {
+      items.forEach(function(item){ list.appendChild(makeHiEl(item,true)); });
+    }
+  }
+
+  // home recent preview (3 items)
+  var recent=document.getElementById('home-recent');
+  if (recent) {
+    recent.innerHTML='';
+    if (!items.length) {
+      recent.innerHTML='<div class="home-empty">Nothing yet — create your first QR code.</div>';
+    } else {
+      items.slice(0,3).forEach(function(item){ recent.appendChild(makeHiEl(item,true)); });
+    }
+  }
+}
+
+/* ── SCAN ── */
+function resetScan() {
+  stopCam();
+  document.getElementById('scan-result').classList.remove('show');
+  document.getElementById('scan-grid').style.display='';
+  document.getElementById('cam-wrap').classList.remove('show');
+}
+async function startCam() {
+  if(typeof jsQR==='undefined'){toast('Scanner library not loaded — check your connection','err');return;}
+  document.getElementById('scan-grid').style.display='none';
+  document.getElementById('cam-wrap').classList.add('show');
+  document.getElementById('scan-result').classList.remove('show');
+  try {
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    var v=document.getElementById('cam-vid'); v.srcObject=camStream; await v.play();
+    v.addEventListener('loadedmetadata',function(){scanLoop(v);},{once:true});
+  } catch(e) {
+    toast('Camera permission denied','err');
+    document.getElementById('scan-grid').style.display='';
+    document.getElementById('cam-wrap').classList.remove('show');
+  }
+}
+function scanLoop(v) {
+  var c=document.createElement('canvas'), ctx=c.getContext('2d');
+  function frame(){
+    if(!camStream) return;
+    if(typeof jsQR==='undefined'){camAF=requestAnimationFrame(frame);return;}
+    if(v.readyState===v.HAVE_ENOUGH_DATA){
+      c.width=v.videoWidth; c.height=v.videoHeight; ctx.drawImage(v,0,0);
+      var id=ctx.getImageData(0,0,c.width,c.height);
+      var res=jsQR(id.data,id.width,id.height,{inversionAttempts:'dontInvert'});
+      if(res){stopCam();showScanResult(res.data);return;}
+    }
+    camAF=requestAnimationFrame(frame);
+  }
+  camAF=requestAnimationFrame(frame);
+}
+function stopCam(){
+  if(camAF){cancelAnimationFrame(camAF);camAF=null;}
+  if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;}
+  document.getElementById('cam-wrap').classList.remove('show');
+  document.getElementById('scan-grid').style.display='';
+}
+function scanFile(inp){
+  var file=inp.files[0]; if(!file) return;
+  if(typeof jsQR==='undefined'){toast('Scanner not loaded yet — try again','err');inp.value='';return;}
+  var url=URL.createObjectURL(file);
+  var img=new Image();
+  img.onload=function(){
+    var c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+    var ctx=c.getContext('2d');ctx.drawImage(img,0,0);
+    var id=ctx.getImageData(0,0,c.width,c.height);
+    var res=jsQR(id.data,id.width,id.height,{inversionAttempts:'dontInvert'});
+    URL.revokeObjectURL(url);
+    if(res) showScanResult(res.data); else toast('No QR code found in image','err');
+  };
+  img.src=url; inp.value='';
+}
+async function showScanResult(text){
+  var tp='Text';
+  var isUrl=/^https?:\/\//i.test(text);
+  if(isUrl) tp='URL';
+  else if(/^BEGIN:VCARD/i.test(text)) tp='Contact';
+  else if(/^WIFI:/i.test(text)) tp='WiFi';
+  else if(/^tel:/i.test(text)) tp='Phone';
+  else if(/^mailto:/i.test(text)) tp='Email';
+  else if(/^geo:/i.test(text)) tp='Location';
+  else if(/^sms:/i.test(text)) tp='SMS';
+  document.getElementById('sr-type').textContent=tp;
+  document.getElementById('sr-body').textContent=text;
+  var btns=document.getElementById('sr-btns'); btns.innerHTML='';
+  if(isUrl){
+    var a=document.createElement('a');a.className='btn-a';a.href=text;a.target='_blank';a.rel='noopener';a.textContent='Open Link';
+    btns.appendChild(a);
+  }
+  var cb=document.createElement('button');cb.className='btn-b';cb.textContent='Copy';
+  cb.addEventListener('click',function(){
+    navigator.clipboard.writeText(text).then(function(){toast('Copied!','ok');}).catch(function(){toast('Copy failed','err');});
+  });
+  btns.appendChild(cb);
+  document.getElementById('scan-result').classList.add('show');
+  toast('Decoded!','ok');
+  try {
+    await dbPut({id:Date.now().toString(),typeName:'Scan: '+tp,typeId:'scan',content:text,fieldData:{},fg:'#000',bg:'#fff',at:new Date().toISOString(),thumb:null,qrData:null});
+    loadHist();
+  } catch(e){}
+}
+
+/* ── DOWNLOAD ── */
+function downloadQR(){
+  if(!detailQREl){toast('Nothing to download','err');return;}
+  var url=detailQREl.tagName==='CANVAS'?detailQREl.toDataURL('image/png'):detailQREl.src;
+  if(!url){toast('Nothing to download','err');return;}
+  var a=document.createElement('a');a.href=url;a.download='codeqr-'+Date.now()+'.png';a.click();
+  toast('Saved to device!','ok');
+}
+
+/* ── TOAST ── */
+function toast(msg,type){
+  var s=document.getElementById('toasts');
+  var el=document.createElement('div');el.className='toast '+(type||'ok');
+  el.textContent=(type==='err'?'! ':'\u002b  ')+msg;
+  s.appendChild(el);setTimeout(function(){el.remove();},2500);
+}
+
+/* ── WIRE BUTTONS ── */
+on('h-encode','click',function(){ goTab('pg-enc'); });
+on('h-scan',  'click',function(){ goTab('pg-scan'); });
+on('h-see-all','click',function(){ goTab('pg-hist'); });
+
+on('btn-gen','click',function(){
+  var data=getFields(encType,'h_');
+  var fg=document.getElementById('c-fg').value;
+  var bg=document.getElementById('c-bg').value;
+  doGenerate(encType,data,fg,bg,logoData,null);
+});
+
+on('btn-regen','click',function(){
+  if(!currentItem) return;
+  var data=getFields(editType,'e_');
+  var fg=document.getElementById('e-fg').value;
+  var bg=document.getElementById('e-bg').value;
+  doGenerate(editType,data,fg,bg,null,currentItem.id);
+});
+
+on('det-back',   'click',function(){ closeOv('ov-detail'); });
+on('edit-back',  'click',function(){ closeOv('ov-edit'); });
+on('btn-det-dl', 'click', downloadQR);
+on('btn-det-edit','click',function(){ if(currentItem) openEdit(currentItem); });
+on('btn-det-del','click',function(){
+  if(!currentItem||!confirm('Delete this QR code?')) return;
+  dbDel(currentItem.id).then(function(){
+    closeOv('ov-detail'); loadHist(); toast('Deleted','ok');
+  });
+});
+on('btn-clrall','click',function(){
+  if(!confirm('Clear all history?')) return;
+  dbClear().then(function(){loadHist();toast('Cleared','ok');});
+});
+on('sc-cam',    'click', startCam);
+on('sc-gal',    'click',function(){ document.getElementById('gal-input').click(); });
+on('gal-input', 'change',function(){ scanFile(this); });
+on('btn-stopcam','click', stopCam);
+
+on('logo-zone','click',function(){ document.getElementById('logo-input').click(); });
+on('logo-input','change',function(){
+  var file=this.files[0]; if(!file) return;
+  var r=new FileReader();
+  r.onload=function(e){
+    logoData=e.target.result;
+    document.getElementById('logo-name').textContent=file.name;
+    var p=document.getElementById('logo-th');p.innerHTML='';
+    var img=document.createElement('img');img.src=logoData;p.appendChild(img);
+    document.getElementById('logo-rm').style.display='';
+    toast('Logo added','ok');
+  };
+  r.readAsDataURL(file);
+});
+on('logo-rm','click',function(e){
+  e.stopPropagation(); logoData=null;
+  document.getElementById('logo-name').textContent='Add logo';
+  document.getElementById('logo-th').innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  document.getElementById('logo-rm').style.display='none';
+  document.getElementById('logo-input').value='';
+});
+
+on('c-fg','input',function(){document.getElementById('c-fg-v').textContent=this.value;});
+on('c-bg','input',function(){document.getElementById('c-bg-v').textContent=this.value;});
+on('e-fg','input',function(){document.getElementById('e-fg-v').textContent=this.value;});
+on('e-bg','input',function(){document.getElementById('e-bg-v').textContent=this.value;});
+
+/* ── INIT ── */
+openDB().then(function(){ initEncode(); loadHist(); }).catch(function(e){console.error('DB',e);});
+</script>
+</body>
+</html>

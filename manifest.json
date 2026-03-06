@@ -1,0 +1,19 @@
+{
+  "name": "CodeQR",
+  "short_name": "CodeQR",
+  "description": "Encode and scan QR codes. By EML Tech Studio.",
+  "start_url": "./app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050a0f",
+  "theme_color": "#050a0f",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Encode QR", "url": "./app.html#encode" },
+    { "name": "Scan QR",   "url": "./app.html#scan"   }
+  ]
+}
